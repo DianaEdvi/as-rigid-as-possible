@@ -6,7 +6,6 @@
 
 int main(int argc, char *argv[])
 {
-    p();
   std::cout << "Hello" << std::endl;
 
   Eigen::MatrixXd V;
