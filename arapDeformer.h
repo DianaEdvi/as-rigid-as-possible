@@ -4,8 +4,10 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <iostream>
 
-class ArapDeformer {
-    void buildLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F);
+struct ArapDeformer {
+    void populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const std::vector<int>& anchorVertices, const double& anchorWeight);
+    Eigen::MatrixXd delta;
+    Eigen::SparseMatrix<double> L_aug;
 };
 
 #endif
