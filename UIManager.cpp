@@ -39,16 +39,6 @@ int UIManager::raycast_to_vertex(int mouse_x, int mouse_y){
                 selected_vertex = v_index;
             }
         }
-
-        // Check if selected vertex is already in the vector
-        auto it = std::find(anchor_indices.begin(), anchor_indices.end(), selected_vertex);
-        if (it == anchor_indices.end()){
-            anchor_indices.push_back(selected_vertex);
-            needs_rebuild = true;
-        }
-        else {
-            anchor_indices.erase(it);
-        }
     }
     return selected_vertex;
 }
@@ -72,31 +62,64 @@ void UIManager::colorAnchors(){
     }
 }
 
+void UIManager::updateAnchorsVector(){
+    // Check if selected vertex is already in the vector
+    auto it = std::find(anchor_indices.begin(), anchor_indices.end(), selected_vertex);
+    if (it == anchor_indices.end()){
+        anchor_indices.push_back(selected_vertex);
+        needs_rebuild = true;
+    }
+    else {
+        anchor_indices.erase(it);
+    }
+}
+
 
 bool UIManager::handle_mouse_down(int button, int modifier){
-    if (modifier & GLFW_MOD_SHIFT) { 
-        // Convert to OpenGL coords
-        int mouseY = viewer.core().viewport(3) - (float)viewer.current_mouse_y;
+    // Convert to OpenGL coords
+    float mouseY = viewer.core().viewport(3) - (float)viewer.current_mouse_y;
 
-        // Find nearest vertes
+    // Shift + Left click: Select anchors 
+    if (modifier & GLFW_MOD_SHIFT) { 
+        // Find nearest vertex and add it to the anchors 
         raycast_to_vertex(viewer.current_mouse_x, mouseY);
+        updateAnchorsVector();
         colorAnchors();
-        
+
         is_dragging = true;
         return true; 
     } 
+
+    // Control + Left click: Select vertex to drag 
+    if (modifier & GLFW_MOD_CONTROL) {
+        // Find nearest vertex
+        int hit_vertex = raycast_to_vertex(viewer.current_mouse_x, mouseY);
+
+        // Only allow dragging if the vertex is actually in our anchor list!
+        auto it = std::find(anchor_indices.begin(), anchor_indices.end(), hit_vertex);
+        if (it != anchor_indices.end()) {
+            selected_vertex = hit_vertex;
+            is_dragging = true; 
+            return true;
+        }
+    }
     return false;
 }
 
-bool UIManager::handle_mouse_move(int mouse_x, int mouse_y){
+bool UIManager::handle_mouse_move(int mouse_x, int mouse_y) {
+    float mouseY = viewer.core().viewport(3) - (float)mouse_y;
     if (is_dragging && selected_vertex != -1) {
-            // TODO: Move the selected vertex to the new mouse position
-            std::cout << "Dragging vertex: " << selected_vertex << std::endl;
+        
+        std::cout << "Dragging vertex: " << selected_vertex << std::endl;
 
-            // viewer.data().set_vertices(V); // You'll call this to update the visual
-            return true;
-        }
-            return false;
+        // 3. (Next step) Unproject the 2D mouse_x and mouse_y into 3D space 
+        // to find the new target position for selected_vertex.
+
+
+        return true;
+    }
+
+    return false;
 }
 
 bool UIManager::handle_mouse_up(int button, int modifier){
@@ -107,28 +130,6 @@ bool UIManager::handle_mouse_up(int button, int modifier){
     }
         return false;
 
-}
-
-void UIManager::launch() {
-    // Tell the viewer who to call when mouse events happen
-    viewer.callback_mouse_down = [this](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
-        return this->handle_mouse_down(button, mod);
-    };
-
-    viewer.callback_mouse_move = [this](igl::opengl::glfw::Viewer& v, int x, int y) -> bool {
-        return this->handle_mouse_move(x, y);
-    };
-
-    viewer.callback_mouse_up = [this](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
-        return this->handle_mouse_up(button, mod);
-    };
-
-    // Set default mesh view settings
-    viewer.data().set_mesh(V, F);
-    viewer.data().set_face_based(true);
-    
-    // Launch window
-    viewer.launch(); 
 }
 
 

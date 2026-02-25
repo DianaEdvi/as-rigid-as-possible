@@ -29,5 +29,26 @@ int main(int argc, char *argv[])
     ArapDeformer deformer(V, F, anchors);
     UIManager uiManager(viewer, V, F, anchors, needs_rebuild);
 
-    uiManager.launch();
+    viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
+        bool handled = uiManager.handle_mouse_down(button, mod);
+        deformer.populateAugmentedLaplacian(V, F, 1.0);
+        return handled;
+    };
+
+    viewer.callback_mouse_move = [&](igl::opengl::glfw::Viewer& v, int x, int y) -> bool {
+        return uiManager.handle_mouse_move(x, y);
+    };
+
+    viewer.callback_mouse_up = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
+        return uiManager.handle_mouse_up(button, mod);
+    };
+
+
+
+    // Set default mesh view settings
+    viewer.data().set_mesh(V, F);
+    viewer.data().set_face_based(true);
+    
+    // Launch window
+    viewer.launch(); 
 }

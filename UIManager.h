@@ -9,8 +9,10 @@
 class UIManager {
     public:
         UIManager(igl::opengl::glfw::Viewer& v, Eigen::MatrixXd& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool needs_rebuild);
-        void launch();
         bool& needs_rebuild;
+        bool handle_mouse_down(int button, int modifier);
+        bool handle_mouse_move(int mouse_x, int mouse_y);
+        bool handle_mouse_up(int button, int modifier);
     private:
         int selected_vertex = -1;
         bool is_dragging = false;
@@ -22,13 +24,9 @@ class UIManager {
         Eigen::MatrixXd& V;
         Eigen::MatrixXi& F;
 
-        int raycast_to_vertex(int mouse_x, int mouse_y);
-    
-        // The Callback logic (logic moves here, main stays clean)
-        bool handle_mouse_down(int button, int modifier);
-        bool handle_mouse_move(int mouse_x, int mouse_y);
-        bool handle_mouse_up(int button, int modifier);
+        int raycast_to_vertex(int mouse_x, int mouse_y);    
         void colorAnchors();
+        void updateAnchorsVector();
 };
 
 
