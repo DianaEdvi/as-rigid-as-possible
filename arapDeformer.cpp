@@ -2,6 +2,10 @@
 
 #include <igl/cotmatrix.h>
 
+
+ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, std::vector<int>& anchors) :
+V(v), F(f), anchor_indices(anchors){}
+
 /**
  * Constructs the overdetermined system matrix (A) and pre-factors the solver
  * 1. Computes the Laplace-Beltrami operator (cotangent weights)
@@ -10,7 +14,7 @@
  * 4. Pre-computes the Normal Equations (A^T * A) to ensure symmetry
  * 5. Computes Cholesky decomposition for faster solving
  */
-void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const std::vector<int>& anchor_indices, const double& anchorWeight){
+void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
     // Generate base cotangent matrix
     Eigen::SparseMatrix<double> L_cot;
     igl::cotmatrix(V, F, L_cot);
@@ -59,7 +63,7 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
  * Top N rows: Original differential coordinates (delta)
  * Bottom C rows: Target 3D positions of anchor vertices
  */
-void ArapDeformer::populateTargetMatrix(const std::vector<int>& anchor_indices, const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
+void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
     target = Eigen::MatrixXd::Zero(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
 
     // Populate the first N rows with the original curvature (delta)
