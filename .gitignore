@@ -45,6 +45,7 @@ bin/
 *.sln
 *.vcxproj
 *.filters
+.vscode/
 
 # Ignore library downloads
 _deps/
