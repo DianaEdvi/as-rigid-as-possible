@@ -5,6 +5,7 @@
 
 #include "arapDeformer.h"
 #include "UIManager.h"
+
 int main(int argc, char *argv[])
 {
     Eigen::MatrixXd V;
@@ -32,15 +33,21 @@ int main(int argc, char *argv[])
 
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
         bool handled = uiManager.handle_mouse_down(button, mod);
-        deformer.populateAugmentedLaplacian(V, F, 1.0);
+        deformer.populateAugmentedLaplacian(V, F, 10000.0);
         needs_rebuild = false; 
         return handled;
     };
 
     viewer.callback_mouse_move = [&](igl::opengl::glfw::Viewer& v, int x, int y) -> bool {
-        bool handled = uiManager.handle_mouse_move(x, y);
+        int modifier = 0;
+        // Query the GLFW window directly for the Control key state
+        if (glfwGetKey(v.window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || 
+            glfwGetKey(v.window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) {
+            modifier |= GLFW_MOD_CONTROL;
+        }
+        bool handled = uiManager.handle_mouse_move(x, y, modifier);
         if (handled){
-            deformer.populateTargetMatrix(anchors_positions, 1.0);
+            deformer.populateTargetMatrix(anchors_positions, 10000.0);
             deformer.solveLeastSquares();
             V = deformer.V_new;
             viewer.data().set_vertices(V);
@@ -61,3 +68,4 @@ int main(int argc, char *argv[])
     // Launch window
     viewer.launch(); 
 }
+
