@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-UIManager::UIManager(igl::opengl::glfw::Viewer& v, Eigen::MatrixXd& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool needs_rebuild) :
-viewer(v), V(V), F(F), anchor_indices(anchors), needs_rebuild(needs_rebuild) {
+UIManager::UIManager(igl::opengl::glfw::Viewer& v, Eigen::MatrixXd& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool needs_rebuild, std::vector<Eigen::Vector3d>& anchors_positions) :
+viewer(v), V(V), F(F), anchor_indices(anchors), needs_rebuild(needs_rebuild), anchors_positions(anchors_positions){
     tree.init(V, F);
 }
 
@@ -32,7 +32,8 @@ int UIManager::raycast_to_vertex(int mouse_x, int mouse_y){
             int v_index = F(id, i);
             
             // Calculate the distance from the vertex to the hitpoint 
-            double dist = (V.row(v_index).transpose() - hitPoint).norm();
+            Eigen::Vector3d v_pos(V(v_index, 0), V(v_index, 1), V(v_index, 2));
+            double dist = (v_pos - hitPoint).norm();
             // Find closest vertex 
             if (dist <= min_dist){
                 min_dist = dist;
@@ -51,15 +52,21 @@ void UIManager::colorAnchors(){
         return; 
     }
 
-    Eigen::MatrixXd anchorPositions(anchor_indices.size(), 3);
+    anchors_positions.resize(anchor_indices.size());
+    Eigen::MatrixXd M(anchor_indices.size(), 3);
 
     // Loop through every vertex and color it to red
     for (int i = 0; i < anchor_indices.size(); ++i){
-        anchorPositions.row(i) = V.row(anchor_indices[i]);
+        // Explicitly build the 3x1 vector
+        anchors_positions[i] = Eigen::Vector3d(V(anchor_indices[i], 0), V(anchor_indices[i], 1), V(anchor_indices[i], 2));
 
-        viewer.data().point_size = 10; // Make it big enough to see
-        viewer.data().set_points(anchorPositions, Eigen::RowVector3d(1, 0, 0));
+        // Assign to the dynamic matrix
+        M.row(i) = anchors_positions[i].transpose();
     }
+
+    viewer.data().point_size = 10; // Make it big enough to see
+    viewer.data().set_points(M, Eigen::RowVector3d(1, 0, 0));
+    
 }
 
 void UIManager::updateAnchorsVector(){
@@ -112,10 +119,28 @@ bool UIManager::handle_mouse_move(int mouse_x, int mouse_y) {
         
         std::cout << "Dragging vertex: " << selected_vertex << std::endl;
 
-        // 3. (Next step) Unproject the 2D mouse_x and mouse_y into 3D space 
-        // to find the new target position for selected_vertex.
+        // 1. Use RowVector3d (1x3) so libigl knows this is exactly ONE vertex
+        Eigen::RowVector3d win_coords; 
 
+        // Project the 3D position
+        Eigen::RowVector3d v_pos = V.row(selected_vertex);
+        igl::project(v_pos, viewer.core().view, viewer.core().proj, viewer.core().viewport, win_coords);
+        
+        double z = win_coords(2);  
+        
+        // 2. Unproject using RowVector3d as well
+        Eigen::RowVector3d newPos;
+        Eigen::RowVector3d mouse_pos(mouse_x, mouseY, z);
+        igl::unproject(mouse_pos, viewer.core().view, viewer.core().proj, viewer.core().viewport, newPos);
 
+        auto it = std::find(anchor_indices.begin(), anchor_indices.end(), selected_vertex);
+        if (it != anchor_indices.end()) {
+            int anchor_idx = std::distance(anchor_indices.begin(), it);
+            // Safely assign the row vector data back into your Vector3d array
+            anchors_positions[anchor_idx] = Eigen::Vector3d(newPos(0), newPos(1), newPos(2)); 
+        }
+
+        // colorAnchors();
         return true;
     }
 

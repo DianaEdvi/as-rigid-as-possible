@@ -6,7 +6,7 @@
 #include <iostream>
 
 struct ArapDeformer {
-    ArapDeformer(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, std::vector<int>& anchors);
+    ArapDeformer(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, std::vector<int>& anchors, std::vector<Eigen::Vector3d>& anchors_positions);
     void populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight);
     void populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight);
     void solveLeastSquares();
@@ -17,7 +17,8 @@ struct ArapDeformer {
     Eigen::SparseMatrix<double> L_aug;
     Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> solver;
     Eigen::MatrixXd V_new;
-    std::vector<int> anchor_indices;
+    std::vector<int>& anchor_indices;
+    std::vector<Eigen::Vector3d>& anchors_positions;
 
 };
 

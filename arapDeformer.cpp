@@ -3,8 +3,8 @@
 #include <igl/cotmatrix.h>
 
 
-ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, std::vector<int>& anchors) :
-V(v), F(f), anchor_indices(anchors){}
+ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, std::vector<int>& anchors, std::vector<Eigen::Vector3d>& anchors_positions) :
+V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
 
 /**
  * Constructs the overdetermined system matrix (A) and pre-factors the solver
