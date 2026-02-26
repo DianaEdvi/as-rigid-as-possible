@@ -2,6 +2,9 @@
 #include <igl/readOBJ.h>
 #include <iostream>
 #include <Eigen/Core>
+#include <igl/opengl/glfw/imgui/ImGuiPlugin.h>
+#include <igl/opengl/glfw/imgui/ImGuiMenu.h>
+#include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 
 #include "arapDeformer.h"
 #include "UIManager.h"
@@ -24,6 +27,28 @@ int main(int argc, char *argv[])
     }
     
     igl::opengl::glfw::Viewer viewer;
+
+    // Add menu plugin
+    igl::opengl::glfw::imgui::ImGuiPlugin plugin;
+    viewer.plugins.push_back(&plugin);
+    igl::opengl::glfw::imgui::ImGuiMenu menu;
+    plugin.widgets.push_back(&menu);
+
+    menu.callback_draw_viewer_window = [&]()
+    {
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+
+        ImGui::Text("As-Rigid-As-Possible Mesh Deformation");
+        ImGui::Separator();
+        ImGui::Text("Instructions:");
+        ImGui::BulletText("Drag left-click to rotate the view");
+        ImGui::BulletText("Scroll to zoom in/out");
+        ImGui::BulletText("SHIFT + Left-click: Anchor vertices");
+        ImGui::BulletText("CONTROL + drag + Left-click: Move anchors");
+        ImGui::BulletText("'R' to reset the mesh");
+    };
+
     std::vector<int> anchors;
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
@@ -33,7 +58,7 @@ int main(int argc, char *argv[])
     deformer.V_new = V;
     UIManager uiManager(viewer, deformer.V_new, F, anchors, needs_rebuild, anchors_positions);
 
-    deformer.precomputeRotations();
+    deformer.precomputeStaticData();
 
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
         bool handled = uiManager.handle_mouse_down(button, mod);
