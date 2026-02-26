@@ -40,8 +40,10 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
 
     L_aug.setFromTriplets(triplets.begin(), triplets.end());
 
+    L_aug_T = L_aug.transpose();
+
     // Normal Equations
-    Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug.transpose() * L_aug;
+    Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug_T * L_aug;
 
     // Compute Cholesky decomposition 
     solver.compute(prefactorized_L_aug);
@@ -58,7 +60,7 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
  * Bottom C rows: Target 3D positions of anchor vertices
  */
 void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
-    target = Eigen::MatrixXd::Zero(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
+    target.resize(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
 
     // Populate the first N rows with the original curvature (delta)
     //original edge vectors, rotated by the matrices in rotations, and weighted by the cotangent weights.
@@ -92,7 +94,8 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
  */
 void ArapDeformer::solveLeastSquares(){
     // Normal Equations 
-    Eigen::MatrixXd balanced_target = L_aug.transpose() * target;
+    // Directly evaluate the multiplication into the pre-allocated member variable
+    balanced_target.noalias() = L_aug_T * target;
 
     // Solve system 
     V_new = solver.solve(balanced_target);
