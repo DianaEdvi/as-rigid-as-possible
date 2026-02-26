@@ -19,6 +19,9 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
     // Store new data in triplets. More efficient when we rebuild the sparse matrix 
     std::vector<Eigen::Triplet<double>> triplets;
 
+    // Reserve space
+    triplets.reserve(L_cot.nonZeros() + anchor_indices.size());
+
     // Traverse efficiently through sparse matrix
     for (int c = 0; c < L_cot.outerSize(); ++c){
         // Copy L_cot into triplets 
