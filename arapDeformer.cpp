@@ -58,12 +58,12 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
  * Bottom C rows: Target 3D positions of anchor vertices
  */
 void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
-    target = Eigen::MatrixXd::Zero(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
+    target.resize(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
 
     // Populate the first N rows with the original curvature (delta)
     //original edge vectors, rotated by the matrices in rotations, and weighted by the cotangent weights.
 
-    for (int i = 0; i < delta.rows(); ++i){
+    igl::parallel_for(delta.rows(), [&](int i){
         Eigen::Vector3d weighted_delta = Eigen::Vector3d::Zero();
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
             int neighbor_index = precomputed_neighbors[i][j].index;
@@ -74,7 +74,7 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
             weighted_delta += (weight/2) * (rotation_target + rotation_neighbor) * original_edge;
         }
         target.row(i) = weighted_delta.transpose();
-    }
+    });
 
 
     int currentRow = delta.rows();
@@ -136,8 +136,10 @@ void ArapDeformer::precomputeStaticData() {
 
 // For each vertex, compute the optimal rotation that best aligns the original and deformed edge vectors to preserve local rigidity.
 void ArapDeformer::computeLocalStep(){
-    for (int i = 0; i < V.rows(); ++i){
+    // MULTITHREADING COOLNESS: Splits the loop across your available CPU threads
+    igl::parallel_for(V.rows(), [&](int i){
         Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero(); 
+        
         // Loop through all neighbouring vertices
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
             int neighbor_index = precomputed_neighbors[i][j].index;
@@ -150,6 +152,7 @@ void ArapDeformer::computeLocalStep(){
 
             covariance += weight * original_edge * deformed_edge.transpose();
         }
+        
         // SVD Decomposition 
         Eigen::JacobiSVD<Eigen::Matrix3d> svd(covariance, Eigen::ComputeFullU | Eigen::ComputeFullV);
         Eigen::Matrix3d rotation = svd.matrixV() * svd.matrixU().transpose();
@@ -160,8 +163,9 @@ void ArapDeformer::computeLocalStep(){
             matV.col(2) *= -1; // Flip the sign of the last column
             rotation = matV * svd.matrixU().transpose();
         }
-        rotations[i] = rotation;
-    }
+        
+        rotations[i] = rotation; // Thread-safe because every thread writes to a unique index
+    });
 }
 
 

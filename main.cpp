@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
         ImGui::SetNextWindowSize(ImVec2(10, 10), ImGuiCond_FirstUseEver);
 
         ImGui::Text("As-Rigid-As-Possible Mesh Deformation");
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::Separator();
         ImGui::Text("Instructions:");
         ImGui::BulletText("Drag left-click to rotate the view");
@@ -83,8 +84,8 @@ int main(int argc, char *argv[])
                 deformer.computeLocalStep();
                 deformer.populateTargetMatrix(anchors_positions, 10000.0);
                 deformer.solveLeastSquares();
-                viewer.data().set_vertices(deformer.V_new);
             }
+            viewer.data().set_vertices(deformer.V_new);
         }
         return handled;
     };
