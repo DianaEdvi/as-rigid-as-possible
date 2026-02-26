@@ -16,7 +16,6 @@ V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
  */
 void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
     // Generate base cotangent matrix
-    Eigen::SparseMatrix<double> L_cot;
     igl::cotmatrix(V, F, L_cot);
 
     delta = L_cot * V;
@@ -67,7 +66,21 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
     target = Eigen::MatrixXd::Zero(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
 
     // Populate the first N rows with the original curvature (delta)
-    target.topRows(delta.rows()) = delta;
+    //original edge vectors, rotated by the matrices in rotations, and weighted by the cotangent weights.
+
+    for (int i = 0; i < delta.rows(); ++i){
+        Eigen::Vector3d weighted_delta = Eigen::Vector3d::Zero();
+        for (int j = 0; j < adjacent_indices[i].size(); ++j){
+            int neighbor_index = adjacent_indices[i][j];
+            double weight = L_cot.coeff(i, neighbor_index);
+            Eigen::Vector3d original_edge = (V.row(neighbor_index) - V.row(i)).transpose();
+            Eigen::Matrix3d rotation_target = rotations[i];
+            Eigen::Matrix3d rotation_neighbor = rotations[neighbor_index];
+            weighted_delta += (weight/2) * (rotation_target + rotation_neighbor) * original_edge;
+        }
+        target.row(i) = weighted_delta.transpose();
+    }
+
 
     int currentRow = delta.rows();
     // Populate the N + C rows with the anchor vertex positions 
@@ -96,6 +109,72 @@ void ArapDeformer::solveLeastSquares(){
 
 }
 
+void ArapDeformer::precomputeRotations() {
+    
+    // Create adjacency list for each vertex
+    adjacent_indices.resize(V.rows()); 
+    for (int i = 0; i < F.rows(); ++i) {
+        int v0 = F(i, 0);
+        int v1 = F(i, 1);   
+        int v2 = F(i, 2);
 
+        auto it = std::find(adjacent_indices[v0].begin(), adjacent_indices[v0].end(), v1);
+        if (it == adjacent_indices[v0].end()) {
+            adjacent_indices[v0].push_back(v1);
+        }
+        it = std::find(adjacent_indices[v0].begin(), adjacent_indices[v0].end(), v2);
+        if (it == adjacent_indices[v0].end()) {
+            adjacent_indices[v0].push_back(v2);
+        }
+        it = std::find(adjacent_indices[v1].begin(), adjacent_indices[v1].end(), v0);
+        if (it == adjacent_indices[v1].end()) {
+            adjacent_indices[v1].push_back(v0);
+        }
+        it = std::find(adjacent_indices[v1].begin(), adjacent_indices[v1].end(), v2);
+        if (it == adjacent_indices[v1].end()) {
+            adjacent_indices[v1].push_back(v2);
+        }
+        it = std::find(adjacent_indices[v2].begin(), adjacent_indices[v2].end(), v0);
+        if (it == adjacent_indices[v2].end()) {
+            adjacent_indices[v2].push_back(v0);
+        }
+        it = std::find(adjacent_indices[v2].begin(), adjacent_indices[v2].end(), v1);
+        if (it == adjacent_indices[v2].end()) {
+            adjacent_indices[v2].push_back(v1);
+        }
+    }
+
+    rotations.resize(V.rows(), Eigen::Matrix3d::Identity()); // Initialize all rotations to identity 
+}
+
+// For each vertex, compute the optimal rotation that best aligns the original and deformed edge vectors to preserve local rigidity.
+void ArapDeformer::computeLocalStep(){
+    for (int i = 0; i < V.rows(); ++i){
+        Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero(); 
+        // Loop through all neighbouring vertices
+        for (int j = 0; j < adjacent_indices[i].size(); ++j){
+            int neighbor_index = adjacent_indices[i][j];
+            Eigen::Vector3d original_edge, deformed_edge;
+
+            // Compute the covariance matrix for vertex i by summing over its neighbors
+            original_edge = (V.row(i) - V.row(neighbor_index)).transpose();
+            deformed_edge = (V_new.row(i) - V_new.row(neighbor_index)).transpose();
+            double weight = L_cot.coeff(i, neighbor_index);
+
+            covariance += weight * original_edge * deformed_edge.transpose();
+        }
+        // SVD Decomposition 
+        Eigen::JacobiSVD<Eigen::Matrix3d> svd(covariance, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        Eigen::Matrix3d rotation = svd.matrixV() * svd.matrixU().transpose();
+
+        // Ensure the rotation is a proper rotation (determinant = 1)
+        if (rotation.determinant() < 0) {
+            Eigen::Matrix3d matV = svd.matrixV();
+            matV.col(2) *= -1; // Flip the sign of the last column
+            rotation = matV * svd.matrixU().transpose();
+        }
+        rotations[i] = rotation;
+    }
+}
 
 

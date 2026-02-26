@@ -27,13 +27,19 @@ int main(int argc, char *argv[])
     std::vector<int> anchors;
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
+    int arapIterations = 3;
 
     ArapDeformer deformer(V, F, anchors, anchors_positions);
-    UIManager uiManager(viewer, V, F, anchors, needs_rebuild, anchors_positions);
+    deformer.V_new = V;
+    UIManager uiManager(viewer, deformer.V_new, F, anchors, needs_rebuild, anchors_positions);
+
+    deformer.precomputeRotations();
 
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
         bool handled = uiManager.handle_mouse_down(button, mod);
         deformer.populateAugmentedLaplacian(V, F, 10000.0);
+        // deformer.V_new = V; // Start with the original vertex positions for this iteration
+
         needs_rebuild = false; 
         return handled;
     };
@@ -47,10 +53,13 @@ int main(int argc, char *argv[])
         }
         bool handled = uiManager.handle_mouse_move(x, y, modifier);
         if (handled){
-            deformer.populateTargetMatrix(anchors_positions, 10000.0);
-            deformer.solveLeastSquares();
-            V = deformer.V_new;
-            viewer.data().set_vertices(V);
+            // ARAP iterations to converge to the optimal solution
+            for (int i = 0; i < arapIterations; ++i){
+                deformer.computeLocalStep();
+                deformer.populateTargetMatrix(anchors_positions, 10000.0);
+                deformer.solveLeastSquares();
+                viewer.data().set_vertices(deformer.V_new);
+            }
         }
         return handled;
     };
