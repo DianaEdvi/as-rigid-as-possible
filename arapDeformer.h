@@ -21,7 +21,7 @@ struct ArapDeformer {
     Eigen::SparseMatrix<double> L_cot;
     Eigen::SparseMatrix<double> L_aug;
     Eigen::SparseMatrix<double> L_aug_T;
-    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> solver;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
     MatrixXdRow V_new;
     MatrixXdRow balanced_target;
     std::vector<int>& anchor_indices;
@@ -31,6 +31,8 @@ struct ArapDeformer {
         int index;
         double weight;
         Eigen::Vector3d original_edge;
+        Eigen::Vector3d weighted_edge;      // For computeLocalStep
+        Eigen::Vector3d half_weighted_edge; // For populateTargetMatrix
     };
     std::vector<std::vector<NeighborData>> precomputed_neighbors;
 };

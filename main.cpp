@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
     bool needs_solve = false;
-    int arapIterations = 5;
+    int arapIterations = 2;
 
     ArapDeformer deformer(V, F, anchors, anchors_positions);
     deformer.V_new = V;
@@ -87,13 +87,6 @@ int main(int argc, char *argv[])
         bool handled = uiManager.handle_mouse_move(x, y, modifier);
         if (handled){
             needs_solve = true; 
-            // // ARAP iterations to converge to the optimal solution
-            // for (int i = 0; i < arapIterations; ++i){
-            //     deformer.computeLocalStep();
-            //     deformer.populateTargetMatrix(anchors_positions, 10000.0);
-            //     deformer.solveLeastSquares();
-            // }
-            // viewer.data().set_vertices(deformer.V_new);
         }
         return handled;
     };

@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(example)
 
+# Enable modern CPU optimizations (AVX2, FMA, etc.)
+if(MSVC)
+    add_compile_options(/arch:AVX2 /fp:fast)
+else()
+    add_compile_options(-march=native -O3 -ffast-math)
+endif()
+
 list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Libigl

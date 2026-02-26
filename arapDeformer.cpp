@@ -73,11 +73,9 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
         Eigen::Vector3d weighted_delta = Eigen::Vector3d::Zero();
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
             int neighbor_index = precomputed_neighbors[i][j].index;
-            double weight = precomputed_neighbors[i][j].weight;
-            Eigen::Vector3d original_edge = precomputed_neighbors[i][j].original_edge;
             Eigen::Matrix3d rotation_target = rotations[i];
             Eigen::Matrix3d rotation_neighbor = rotations[neighbor_index];
-            weighted_delta += (weight/2) * (rotation_target + rotation_neighbor) * original_edge;
+            weighted_delta += (rotation_target + rotation_neighbor) * precomputed_neighbors[i][j].half_weighted_edge;
         }
         target.row(i) = weighted_delta.transpose();
     });
@@ -133,10 +131,13 @@ void ArapDeformer::precomputeStaticData() {
                 data.index = col;
                 data.weight = weight;
                 data.original_edge = (V.row(col) - V.row(row)).transpose();
+                data.weighted_edge = -data.weight * data.original_edge;
+                data.half_weighted_edge = (data.weight / 2.0) * data.original_edge;
                 precomputed_neighbors[row].push_back(data);
             }
         }
     }
+
     
 
 }
@@ -153,11 +154,8 @@ void ArapDeformer::computeLocalStep(){
             Eigen::Vector3d original_edge, deformed_edge;
 
             // Compute the covariance matrix for vertex i by summing over its neighbors
-            original_edge = precomputed_neighbors[i][j].original_edge;
             deformed_edge = (V_new.row(i) - V_new.row(neighbor_index)).transpose();
-            double weight = -precomputed_neighbors[i][j].weight;
-
-            covariance += weight * original_edge * deformed_edge.transpose();
+            covariance += precomputed_neighbors[i][j].weighted_edge * deformed_edge.transpose();
         }
         
         // SVD Decomposition 
