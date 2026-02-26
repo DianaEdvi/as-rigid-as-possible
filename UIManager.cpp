@@ -9,7 +9,6 @@ viewer(v), V(V), F(F), anchor_indices(anchors), needs_rebuild(needs_rebuild), an
 }
 
 int UIManager::raycast_to_vertex(int mouse_x, int mouse_y){
-    std::cout << "Raycast to vertex" << std::endl;
     Eigen::Vector3d nearPlane; 
     Eigen::Vector3d farPlane; 
 
@@ -49,7 +48,6 @@ int UIManager::raycast_to_vertex(int mouse_x, int mouse_y){
 }
 
 void UIManager::colorAnchors(){
-    std::cout << "Coloring anchors" << std::endl;
     if (anchor_indices.empty()) {
         viewer.data().clear_points();
         return; 
@@ -74,20 +72,16 @@ void UIManager::colorAnchors(){
     viewer.data().set_points(P, C); // Pass both the positions and the colors matrix
 }
 
-void UIManager::updateAnchorsVector(){
-    std::cout << "Updating anchors vector" << std::endl;
-    
+void UIManager::updateAnchorsVector(){  
     auto it = std::find(anchor_indices.begin(), anchor_indices.end(), selected_vertex);
     
     if (it == anchor_indices.end()){
-        std::cout << "Adding new vertex" << std::endl;
         anchor_indices.push_back(selected_vertex);
         // Initialize the anchor's position exactly when it is created
         anchors_positions.push_back(Eigen::Vector3d(V(selected_vertex, 0), V(selected_vertex, 1), V(selected_vertex, 2)));
         needs_rebuild = true;
     }
     else {
-        std::cout << "Removing vertex" << std::endl;
         // Find the index to keep the positions array perfectly synced with the indices array
         int idx = std::distance(anchor_indices.begin(), it);
         anchor_indices.erase(it);
@@ -148,9 +142,6 @@ bool UIManager::handle_mouse_move(int mouse_x, int mouse_y, int modifier) {
     }
 
     if (is_dragging && selected_vertex != -1) {
-        
-        std::cout << "Dragging vertex: " << selected_vertex << std::endl;
-
         // 1. Use RowVector3d (1x3) so libigl knows this is exactly ONE vertex
         Eigen::RowVector3d win_coords; 
 
@@ -182,7 +173,6 @@ bool UIManager::handle_mouse_move(int mouse_x, int mouse_y, int modifier) {
 bool UIManager::handle_mouse_up(int button, int modifier){
     if (is_dragging) {
         is_dragging = false;
-        std::cout << "Mouse released!" << std::endl;
         selected_vertex = -1;
         tree.init(V, F);
         colorAnchors();

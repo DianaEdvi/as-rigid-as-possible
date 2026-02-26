@@ -95,9 +95,7 @@ int main(int argc, char *argv[])
 
     viewer.callback_key_pressed = [&](igl::opengl::glfw::Viewer& v, unsigned int key, int modifiers) -> bool {
         // Check if the 'r' or 'R' key was pressed
-        if (key == 'r' || key == 'R') {
-            std::cout << "Resetting mesh!" << std::endl;
-            
+        if (key == 'r' || key == 'R') {            
             // 1. Reset the vertices
             deformer.V_new = V;
             viewer.data().set_vertices(deformer.V_new);
