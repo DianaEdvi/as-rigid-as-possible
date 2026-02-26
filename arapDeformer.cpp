@@ -1,7 +1,7 @@
 #include "arapDeformer.h"
 
 #include <igl/cotmatrix.h>
-
+#include <igl/polar_svd.h>
 
 ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, std::vector<int>& anchors, std::vector<Eigen::Vector3d>& anchors_positions) :
 V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
@@ -154,15 +154,8 @@ void ArapDeformer::computeLocalStep(){
             covariance += weight * original_edge * deformed_edge.transpose();
         }
         // SVD Decomposition 
-        Eigen::JacobiSVD<Eigen::Matrix3d> svd(covariance, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        Eigen::Matrix3d rotation = svd.matrixV() * svd.matrixU().transpose();
-
-        // Ensure the rotation is a proper rotation (determinant = 1)
-        if (rotation.determinant() < 0) {
-            Eigen::Matrix3d matV = svd.matrixV();
-            matV.col(2) *= -1; // Flip the sign of the last column
-            rotation = matV * svd.matrixU().transpose();
-        }
+        Eigen::Matrix3d rotation, T;
+        igl::polar_svd(covariance, rotation, T);
         rotations[i] = rotation;
     }
 }
