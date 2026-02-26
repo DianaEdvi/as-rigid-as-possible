@@ -47,7 +47,6 @@ int main(int argc, char *argv[])
         ImGui::Text("As-Rigid-As-Possible Mesh Deformation");
         ImGui::Text("Number of faces: %d", F.rows());
         ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
-        
         ImGui::Separator();
         ImGui::Text("Instructions:");
         ImGui::BulletText("Drag left-click to rotate the view");

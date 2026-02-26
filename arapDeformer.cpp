@@ -143,9 +143,10 @@ void ArapDeformer::precomputeStaticData() {
 
 // For each vertex, compute the optimal rotation that best aligns the original and deformed edge vectors to preserve local rigidity.
 void ArapDeformer::computeLocalStep(){
-    
+    // MULTITHREADING COOLNESS: Splits the loop across your available CPU threads
     igl::parallel_for(V.rows(), [&](int i){
         Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero(); 
+        
         // Loop through all neighbouring vertices
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
             int neighbor_index = precomputed_neighbors[i][j].index;
@@ -158,6 +159,7 @@ void ArapDeformer::computeLocalStep(){
 
             covariance += weight * original_edge * deformed_edge.transpose();
         }
+        
         // SVD Decomposition 
         Eigen::Matrix3d rotation, T;
         igl::polar_svd(covariance, rotation, T);
