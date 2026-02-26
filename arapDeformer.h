@@ -17,13 +17,10 @@ struct ArapDeformer {
     MatrixXdRow V;
     Eigen::MatrixXi F;
     MatrixXdRow target;
-    MatrixXdRow delta;
     Eigen::SparseMatrix<double> L_cot;
-    Eigen::SparseMatrix<double> L_aug;
-    Eigen::SparseMatrix<double> L_aug_T;
+    Eigen::SparseMatrix<double> L_system;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
     MatrixXdRow V_new;
-    MatrixXdRow balanced_target;
     std::vector<int>& anchor_indices;
     std::vector<Eigen::Vector3d>& anchors_positions;
     std::vector<Eigen::Matrix3d> rotations;
