@@ -45,13 +45,16 @@ int main(int argc, char *argv[])
         ImGui::SetNextWindowSize(ImVec2(10, 10), ImGuiCond_FirstUseEver);
 
         ImGui::Text("As-Rigid-As-Possible Mesh Deformation");
+        ImGui::Text("Number of faces: %d", F.rows());
+        ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
+        
         ImGui::Separator();
         ImGui::Text("Instructions:");
         ImGui::BulletText("Drag left-click to rotate the view");
         ImGui::BulletText("Scroll to zoom in/out");
         ImGui::BulletText("SHIFT + Left-click: Anchor vertices");
         ImGui::BulletText("CONTROL + drag + Left-click: Move anchors");
-        ImGui::BulletText("'R' to reset the mesh");
+        ImGui::BulletText("R: to reset the mesh");
     };
 
     std::vector<int> anchors;
