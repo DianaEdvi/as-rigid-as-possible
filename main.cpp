@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
     std::vector<int> anchors;
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
+    bool needs_solve = false;
     int arapIterations = 3;
 
     ArapDeformer deformer(V, F, anchors, anchors_positions);
@@ -78,6 +79,21 @@ int main(int argc, char *argv[])
         }
         bool handled = uiManager.handle_mouse_move(x, y, modifier);
         if (handled){
+            needs_solve = true; 
+            // // ARAP iterations to converge to the optimal solution
+            // for (int i = 0; i < arapIterations; ++i){
+            //     deformer.computeLocalStep();
+            //     deformer.populateTargetMatrix(anchors_positions, 10000.0);
+            //     deformer.solveLeastSquares();
+            // }
+            // viewer.data().set_vertices(deformer.V_new);
+        }
+        return handled;
+    };
+
+    viewer.callback_pre_draw = [&](igl::opengl::glfw::Viewer& v) -> bool {
+        // Run the iterations once per visual frame
+        if (needs_solve) {
             // ARAP iterations to converge to the optimal solution
             for (int i = 0; i < arapIterations; ++i){
                 deformer.computeLocalStep();
@@ -85,8 +101,10 @@ int main(int argc, char *argv[])
                 deformer.solveLeastSquares();
             }
             viewer.data().set_vertices(deformer.V_new);
+            
+            needs_solve = false; 
         }
-        return handled;
+        return false; // Return false so libigl continues with the normal draw cycle
     };
 
     viewer.callback_mouse_up = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
