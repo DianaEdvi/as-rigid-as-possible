@@ -62,10 +62,10 @@ int main(int argc, char *argv[])
 
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
         bool handled = uiManager.handle_mouse_down(button, mod);
-        deformer.populateAugmentedLaplacian(V, F, 10000.0);
-        // deformer.V_new = V; // Start with the original vertex positions for this iteration
-
-        needs_rebuild = false; 
+        if (needs_rebuild){
+            deformer.populateAugmentedLaplacian(V, F, 10000.0);
+            needs_rebuild = false; 
+        }
         return handled;
     };
 
@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
                 deformer.computeLocalStep();
                 deformer.populateTargetMatrix(anchors_positions, 10000.0);
                 deformer.solveLeastSquares();
-                viewer.data().set_vertices(deformer.V_new);
             }
+            viewer.data().set_vertices(deformer.V_new);
         }
         return handled;
     };

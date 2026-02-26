@@ -8,7 +8,7 @@
 
 class UIManager {
     public:
-        UIManager(igl::opengl::glfw::Viewer& v, Eigen::MatrixXd& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool needs_rebuild, std::vector<Eigen::Vector3d>& anchors_positions);
+        UIManager(igl::opengl::glfw::Viewer& v, Eigen::MatrixXd& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool& needs_rebuild, std::vector<Eigen::Vector3d>& anchors_positions);
         bool& needs_rebuild;
         bool handle_mouse_down(int button, int modifier);
         bool handle_mouse_move(int mouse_x, int mouse_y, int modifier);
