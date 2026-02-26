@@ -1,6 +1,7 @@
 #include "arapDeformer.h"
 
 #include <igl/cotmatrix.h>
+#include <igl/parallel_for.h>
 #include <igl/polar_svd.h>
 
 ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, std::vector<int>& anchors, std::vector<Eigen::Vector3d>& anchors_positions) :
@@ -65,7 +66,7 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
     // Populate the first N rows with the original curvature (delta)
     //original edge vectors, rotated by the matrices in rotations, and weighted by the cotangent weights.
 
-    for (int i = 0; i < delta.rows(); ++i){
+    igl::parallel_for(delta.rows(), [&](int i){
         Eigen::Vector3d weighted_delta = Eigen::Vector3d::Zero();
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
             int neighbor_index = precomputed_neighbors[i][j].index;
@@ -76,7 +77,7 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
             weighted_delta += (weight/2) * (rotation_target + rotation_neighbor) * original_edge;
         }
         target.row(i) = weighted_delta.transpose();
-    }
+    });
 
 
     int currentRow = delta.rows();
@@ -139,7 +140,8 @@ void ArapDeformer::precomputeStaticData() {
 
 // For each vertex, compute the optimal rotation that best aligns the original and deformed edge vectors to preserve local rigidity.
 void ArapDeformer::computeLocalStep(){
-    for (int i = 0; i < V.rows(); ++i){
+    
+    igl::parallel_for(V.rows(), [&](int i){
         Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero(); 
         // Loop through all neighbouring vertices
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
@@ -157,7 +159,7 @@ void ArapDeformer::computeLocalStep(){
         Eigen::Matrix3d rotation, T;
         igl::polar_svd(covariance, rotation, T);
         rotations[i] = rotation;
-    }
+    });
 }
 
 
