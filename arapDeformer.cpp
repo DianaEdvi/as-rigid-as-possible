@@ -125,7 +125,7 @@ void ArapDeformer::precomputeStaticData() {
                 NeighborData data;
                 data.index = col;
                 data.weight = weight;
-                data.original_edge = (V.row(row) - V.row(col)).transpose();
+                data.original_edge = (V.row(col) - V.row(row)).transpose();
                 precomputed_neighbors[row].push_back(data);
             }
         }
@@ -146,7 +146,7 @@ void ArapDeformer::computeLocalStep(){
             // Compute the covariance matrix for vertex i by summing over its neighbors
             original_edge = precomputed_neighbors[i][j].original_edge;
             deformed_edge = (V_new.row(i) - V_new.row(neighbor_index)).transpose();
-            double weight = precomputed_neighbors[i][j].weight;
+            double weight = -precomputed_neighbors[i][j].weight;
 
             covariance += weight * original_edge * deformed_edge.transpose();
         }
