@@ -1,7 +1,8 @@
 #include "arapDeformer.h"
 
 #include <igl/cotmatrix.h>
-
+#include <igl/parallel_for.h>
+#include <igl/polar_svd.h>
 
 ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, std::vector<int>& anchors, std::vector<Eigen::Vector3d>& anchors_positions) :
 V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
@@ -17,6 +18,9 @@ V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
 void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
     // Store new data in triplets. More efficient when we rebuild the sparse matrix 
     std::vector<Eigen::Triplet<double>> triplets;
+
+    // Reserve space
+    triplets.reserve(L_cot.nonZeros() + anchor_indices.size());
 
     // Traverse efficiently through sparse matrix
     for (int c = 0; c < L_cot.outerSize(); ++c){
@@ -40,8 +44,10 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
 
     L_aug.setFromTriplets(triplets.begin(), triplets.end());
 
+    L_aug_T = L_aug.transpose();
+
     // Normal Equations
-    Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug.transpose() * L_aug;
+    Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug_T * L_aug;
 
     // Compute Cholesky decomposition 
     solver.compute(prefactorized_L_aug);
@@ -92,7 +98,8 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
  */
 void ArapDeformer::solveLeastSquares(){
     // Normal Equations 
-    Eigen::MatrixXd balanced_target = L_aug.transpose() * target;
+    // Directly evaluate the multiplication into the pre-allocated member variable
+    balanced_target.noalias() = L_aug_T * target;
 
     // Solve system 
     V_new = solver.solve(balanced_target);
@@ -154,17 +161,9 @@ void ArapDeformer::computeLocalStep(){
         }
         
         // SVD Decomposition 
-        Eigen::JacobiSVD<Eigen::Matrix3d> svd(covariance, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        Eigen::Matrix3d rotation = svd.matrixV() * svd.matrixU().transpose();
-
-        // Ensure the rotation is a proper rotation (determinant = 1)
-        if (rotation.determinant() < 0) {
-            Eigen::Matrix3d matV = svd.matrixV();
-            matV.col(2) *= -1; // Flip the sign of the last column
-            rotation = matV * svd.matrixU().transpose();
-        }
-        
-        rotations[i] = rotation; // Thread-safe because every thread writes to a unique index
+        Eigen::Matrix3d rotation, T;
+        igl::polar_svd(covariance, rotation, T);
+        rotations[i] = rotation;
     });
 }
 

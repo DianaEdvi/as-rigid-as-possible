@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-UIManager::UIManager(igl::opengl::glfw::Viewer& v, Eigen::MatrixXd& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool needs_rebuild, std::vector<Eigen::Vector3d>& anchors_positions) :
+UIManager::UIManager(igl::opengl::glfw::Viewer& v, MatrixXdRow& V, Eigen::MatrixXi& F, std::vector<int>& anchors, bool& needs_rebuild, std::vector<Eigen::Vector3d>& anchors_positions) :
 viewer(v), V(V), F(F), anchor_indices(anchors), needs_rebuild(needs_rebuild), anchors_positions(anchors_positions){
     tree.init(V, F);
 }
@@ -86,6 +86,7 @@ void UIManager::updateAnchorsVector(){
         int idx = std::distance(anchor_indices.begin(), it);
         anchor_indices.erase(it);
         anchors_positions.erase(anchors_positions.begin() + idx); 
+        needs_rebuild = true;
     }
 }
 

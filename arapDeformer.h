@@ -5,6 +5,8 @@
 #include <Eigen/SparseCholesky>
 #include <iostream>
 
+// Define a new Row-Major dynamic matrix type (Cache locality optimization for sparse solvers)
+typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatrixXdRow;
 struct ArapDeformer {
     ArapDeformer(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, std::vector<int>& anchors, std::vector<Eigen::Vector3d>& anchors_positions);
     void populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight);
@@ -12,14 +14,16 @@ struct ArapDeformer {
     void solveLeastSquares();
     void precomputeStaticData();
     void computeLocalStep();
-    Eigen::MatrixXd V;
+    MatrixXdRow V;
     Eigen::MatrixXi F;
-    Eigen::MatrixXd target;
-    Eigen::MatrixXd delta;
+    MatrixXdRow target;
+    MatrixXdRow delta;
     Eigen::SparseMatrix<double> L_cot;
     Eigen::SparseMatrix<double> L_aug;
+    Eigen::SparseMatrix<double> L_aug_T;
     Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> solver;
-    Eigen::MatrixXd V_new;
+    MatrixXdRow V_new;
+    MatrixXdRow balanced_target;
     std::vector<int>& anchor_indices;
     std::vector<Eigen::Vector3d>& anchors_positions;
     std::vector<Eigen::Matrix3d> rotations;

@@ -9,8 +9,13 @@
 #include "arapDeformer.h"
 #include "UIManager.h"
 
+#include <thread>
+
 int main(int argc, char *argv[])
 {
+    unsigned int hardware_threads = std::thread::hardware_concurrency();
+    std::cout << "Hardware threads available: " << hardware_threads << std::endl;
+    
     Eigen::MatrixXd V;
     Eigen::MatrixXi F;
     
@@ -40,20 +45,22 @@ int main(int argc, char *argv[])
         ImGui::SetNextWindowSize(ImVec2(10, 10), ImGuiCond_FirstUseEver);
 
         ImGui::Text("As-Rigid-As-Possible Mesh Deformation");
-        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Number of faces: %d", F.rows());
+        ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::Separator();
         ImGui::Text("Instructions:");
         ImGui::BulletText("Drag left-click to rotate the view");
         ImGui::BulletText("Scroll to zoom in/out");
         ImGui::BulletText("SHIFT + Left-click: Anchor vertices");
         ImGui::BulletText("CONTROL + drag + Left-click: Move anchors");
-        ImGui::BulletText("'R' to reset the mesh");
+        ImGui::BulletText("R: to reset the mesh");
     };
 
     std::vector<int> anchors;
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
-    int arapIterations = 3;
+    bool needs_solve = false;
+    int arapIterations = 5;
 
     ArapDeformer deformer(V, F, anchors, anchors_positions);
     deformer.V_new = V;
@@ -63,10 +70,10 @@ int main(int argc, char *argv[])
 
     viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
         bool handled = uiManager.handle_mouse_down(button, mod);
-        deformer.populateAugmentedLaplacian(V, F, 10000.0);
-        // deformer.V_new = V; // Start with the original vertex positions for this iteration
-
-        needs_rebuild = false; 
+        if (needs_rebuild){
+            deformer.populateAugmentedLaplacian(V, F, 10000.0);
+            needs_rebuild = false; 
+        }
         return handled;
     };
 
@@ -79,6 +86,21 @@ int main(int argc, char *argv[])
         }
         bool handled = uiManager.handle_mouse_move(x, y, modifier);
         if (handled){
+            needs_solve = true; 
+            // // ARAP iterations to converge to the optimal solution
+            // for (int i = 0; i < arapIterations; ++i){
+            //     deformer.computeLocalStep();
+            //     deformer.populateTargetMatrix(anchors_positions, 10000.0);
+            //     deformer.solveLeastSquares();
+            // }
+            // viewer.data().set_vertices(deformer.V_new);
+        }
+        return handled;
+    };
+
+    viewer.callback_pre_draw = [&](igl::opengl::glfw::Viewer& v) -> bool {
+        // Run the iterations once per visual frame
+        if (needs_solve) {
             // ARAP iterations to converge to the optimal solution
             for (int i = 0; i < arapIterations; ++i){
                 deformer.computeLocalStep();
@@ -86,8 +108,10 @@ int main(int argc, char *argv[])
                 deformer.solveLeastSquares();
             }
             viewer.data().set_vertices(deformer.V_new);
+            
+            needs_solve = false; 
         }
-        return handled;
+        return false; // Return false so libigl continues with the normal draw cycle
     };
 
     viewer.callback_mouse_up = [&](igl::opengl::glfw::Viewer& v, int button, int mod) -> bool {
