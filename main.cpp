@@ -68,6 +68,26 @@ int main(int argc, char *argv[])
         return uiManager.handle_mouse_up(button, mod);
     };
 
+    viewer.callback_key_pressed = [&](igl::opengl::glfw::Viewer& v, unsigned int key, int modifiers) -> bool {
+        // Check if the 'r' or 'R' key was pressed
+        if (key == 'r' || key == 'R') {
+            std::cout << "Resetting mesh!" << std::endl;
+            
+            // 1. Reset the vertices
+            deformer.V_new = V;
+            viewer.data().set_vertices(deformer.V_new);
+            
+            // 2. Clear out all the anchors so it doesn't snap back!
+            anchors.clear();
+            anchors_positions.clear();
+            viewer.data().clear_points(); // Erases the red/green dots
+            needs_rebuild = true;
+            
+            return true; // Tells libigl we handled this key press
+        }
+        return false;
+    };
+
 
 
     // Set default mesh view settings
