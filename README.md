@@ -1,8 +1,10 @@
-# libigl example project
+# As-Rigid-As-Possible
 
-A blank project example showing how to use libigl and cmake. Feel free and
-encouraged to copy or fork this project as a way of starting a new personal
-project using libigl.
+This project is an interactive 3D mesh deformation tool that implements the ARAP (As-Rigid-As-Possible) algorithm. It allows a user to select specific "anchor" vertices and drag them one at a time to deform the mesh. The ARAP algorithm calculates how the rest of the mesh (the non-anchored parts) should move in order to preserve the local geometric features (rigidity) of the original shape as much as possible.
+
+## Mesh requirements
+
+This project currently only supports single, continuous meshes. The expected ARAP behaviour cannot be guaranteed with models that are discontinuous or that contain multiple meshes.
 
 ## Compile
 
@@ -13,56 +15,31 @@ Compile this project using the standard cmake routine:
     cmake ..
     make
 
-This should find and build the dependencies and create a `example` binary.
+Alternatively:
+
+    mkdir build
+    cd build
+    cmake ..
+    cmake --build .
+
+This should find and build the dependencies and create a `arap` binary.
 
 ## Run
 
-From within the `build` directory just issue:
+From within the `build` directory just run the executable and pass in the path to the model object you would like to display. Some example models have been included in this project for your convenience.
 
-    ./example
+    ./arap ../models/cube.obj
 
-A glfw app should launch displaying a 3D cube.
+A glfw app should launch displaying the passed model.
 
-## Using other modules of libigl
+## Core technologies
 
-This example project uses the `igl::opengl::glfw::Viewer`, therefore it requires
-the glfw module of libigl. This shows up in the CMakeLists.txt 
+- **libigl**: Used for geometry processing, setting up the 3D viewer, and UI overlay (ImGui).
 
-```cmake
-igl_include(glfw)
-…
-target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw)
-```
+- **Eigen**: Used heavily for linear algebra, specifically for its sparse matrix representations and Cholesky solvers.
 
-Suppose you also wanted to use the triangle module in libigl. Then you would
-change these to
+- **GLFW & OpenGL**: Used under the hood by libigl to handle windowing and rendering.
 
-```cmake
-igl_include(glfw)
-igl_include(restricted triangle)
-…
-target_link_libraries(${PROJECT_NAME} PUBLIC igl::glfw igl_restricted::triangle)
-```
+## Implementation
 
-The "restricted" appears in this case because the triangle library has a more
-restricted license than libigl. See other examples commented out in
-CMakeLists.txt.
-
-
-## Dependencies
-
-The only dependencies are STL, Eigen, [libigl](http://libigl.github.io/libigl/) and the dependencies
-of the `igl::opengl::glfw::Viewer` (OpenGL, glad and GLFW).
-
-The CMake build system will automatically download libigl and its dependencies using
-[CMake FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html),
-thus requiring no setup on your part.
-
-### Use a local copy of libigl
-You can use the CMake cache variable `FETCHCONTENT_SOURCE_DIR_LIBIGL` when configuring your CMake project for
-the first time to aim it at a local copy of libigl instead.
-```
-cmake -DFETCHCONTENT_SOURCE_DIR_LIBIGL=<path-to-libigl> ..
-```
-When changing this value, do not forget to clear your `CMakeCache.txt`, or to update the cache variable
-via `cmake-gui` or `ccmake`.
+Check out my [implementation](./docs/IMPLEMENTATION.md) doc for a full breakdown of the project
