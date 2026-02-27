@@ -183,4 +183,8 @@ bool UIManager::handle_mouse_up(int button, int modifier){
 
 }
 
+void UIManager::rebuild_tree() {
+    tree.init(V, F);
+}
+
 

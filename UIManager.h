@@ -15,7 +15,8 @@ class UIManager {
         bool handle_mouse_down(int button, int modifier);
         bool handle_mouse_move(int mouse_x, int mouse_y, int modifier);
         bool handle_mouse_up(int button, int modifier);
-    private:
+        void rebuild_tree();
+        private:
         int selected_vertex = -1;
         bool is_dragging = false;
         std::vector<int>& anchor_indices;
