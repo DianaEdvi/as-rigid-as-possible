@@ -21,3 +21,12 @@ So why do we need Row-Major ordering here?
 Certain functions in this project require a scan of every vertex in the model. This means we are looking for xi, yi, and zi for any given vertex. When a **cache line** (a block of memory, say from index 0 to 4) is pulled into the CPU, we want all three coordinates to be in that line so that the CPU can find it at once without having to return to the RAM. It is therefore easy to see how storing our matrices in Row-Major order works out beaufifully for our purposes.
 
 The effects of this optimization can be seen whenever sparse matrices are multiplied together (see ...) and when solving least squares systems (see ...)
+
+I should note that changing the major of a matrix does not change how we *access* said matrix. When it comes to indexing into a matrix, in this project, rows should always represent vertices, and colums should always represent dimension. This process simply changes how matrices are ordered *under the hood*.
+
+### Sparse Matrices
+
+A sparse matrix is a matrix that is populated mostly by zero's. An identity matrix is an example of a sparse matrix. Instead of storing every single zero in memory, sparse matrices only store the non-zero entries. You can review how sparse matrices are represented in memory [here](https://www.geeksforgeeks.org/dsa/sparse-matrix-representation/).
+
+![sparse-matrix-representation](./media/sparse-representation.png)
+
