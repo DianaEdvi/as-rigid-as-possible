@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
     bool needs_solve = false;
-    int arapIterations = 20;
+    int arapIterations = 5;
 
     ArapDeformer deformer(V, F, anchors, anchors_positions);
     deformer.V_new = V;
