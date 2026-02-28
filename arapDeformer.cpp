@@ -17,40 +17,48 @@ V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
  */
 void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
     // Store new data in triplets. More efficient when we rebuild the sparse matrix 
-    std::vector<Eigen::Triplet<double>> triplets;
+    // std::vector<Eigen::Triplet<double>> triplets;
 
-    // Reserve space
-    triplets.reserve(L_cot.nonZeros() + anchor_indices.size());
+    // // Reserve space
+    // triplets.reserve(L_cot.nonZeros() + anchor_indices.size());
 
-    // Traverse efficiently through sparse matrix
-    for (int c = 0; c < L_cot.outerSize(); ++c){
-        // Copy L_cot into triplets 
-        for (Eigen::SparseMatrix<double>::InnerIterator it(L_cot, c); it; ++it){
-            triplets.push_back(Eigen::Triplet<double>(it.row(), it.col(), it.value()));
-        }
+    // // Traverse efficiently through sparse matrix
+    // for (int c = 0; c < L_cot.outerSize(); ++c){
+    //     // Copy L_cot into triplets 
+    //     for (Eigen::SparseMatrix<double>::InnerIterator it(L_cot, c); it; ++it){
+    //         triplets.push_back(Eigen::Triplet<double>(it.row(), it.col(), it.value()));
+    //     }
+    // }
+
+    // int currentRow = V.rows(); // begin establishing anchor data after Nth row 
+
+    // // Traverse through all the vertices we want to anchor
+    // for (int i = 0; i < anchor_indices.size(); ++i){
+    //     // Add a new row for each anchor. Provide the location and weight
+    //     triplets.push_back(Eigen::Triplet<double>(currentRow, anchor_indices[i], anchorWeight));
+    //     currentRow++;
+    // }
+
+    // L_aug.resize(V.rows() + anchor_indices.size(), V.rows()); // Num rows, num cols. 
+    // // Num cols represents the number of vertices, not xyz. We are in Laplacian after all
+
+    // L_aug.setFromTriplets(triplets.begin(), triplets.end());
+
+    // L_aug_T = L_aug.transpose();
+
+    // // Normal Equations
+    // Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug_T * L_aug;
+
+    Eigen::SparseMatrix<double> L_system = -L_cot;
+
+    // Add anchor weights directly to the diagonal of the existing vertices
+    for (int i = 0; i < anchor_indices.size(); ++i) {
+        int idx = anchor_indices[i];
+        L_system.coeffRef(idx, idx) += anchorWeight;
     }
-
-    int currentRow = V.rows(); // begin establishing anchor data after Nth row 
-
-    // Traverse through all the vertices we want to anchor
-    for (int i = 0; i < anchor_indices.size(); ++i){
-        // Add a new row for each anchor. Provide the location and weight
-        triplets.push_back(Eigen::Triplet<double>(currentRow, anchor_indices[i], anchorWeight));
-        currentRow++;
-    }
-
-    L_aug.resize(V.rows() + anchor_indices.size(), V.rows()); // Num rows, num cols. 
-    // Num cols represents the number of vertices, not xyz. We are in Laplacian after all
-
-    L_aug.setFromTriplets(triplets.begin(), triplets.end());
-
-    L_aug_T = L_aug.transpose();
-
-    // Normal Equations
-    Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug_T * L_aug;
 
     // Compute Cholesky decomposition 
-    solver.compute(prefactorized_L_aug);
+    solver.compute(L_system);
     
     if (solver.info() != Eigen::Success) {
         std::cerr << "Decomposition failed!" << std::endl;
@@ -64,7 +72,7 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
  * Bottom C rows: Target 3D positions of anchor vertices
  */
 void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
-    target.resize(L_aug.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
+    target.resize(V.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
 
     // Populate the first N rows with the original curvature (delta)
     //original edge vectors, rotated by the matrices in rotations, and weighted by the cotangent weights.
@@ -77,16 +85,13 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
             Eigen::Matrix3d rotation_neighbor = rotations[neighbor_index];
             weighted_delta += (rotation_target + rotation_neighbor) * precomputed_neighbors[i][j].half_weighted_edge;
         }
-        target.row(i) = weighted_delta.transpose();
+        target.row(i) = -weighted_delta.transpose();
     });
 
-
-    int currentRow = delta.rows();
     // Populate the N + C rows with the anchor vertex positions 
     for (int i = 0; i < anchor_indices.size(); ++i){
-        target(currentRow + i, 0) = target_positions[i].x() * anchorWeight;
-        target(currentRow + i, 1) = target_positions[i].y() * anchorWeight;
-        target(currentRow + i, 2) = target_positions[i].z() * anchorWeight;
+        int idx = anchor_indices[i];
+        target.row(idx) += target_positions[i].transpose() * anchorWeight; // Apply anchor weight to the target position
     }
 }
 
@@ -97,10 +102,10 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
 void ArapDeformer::solveLeastSquares(){
     // Normal Equations 
     // Directly evaluate the multiplication into the pre-allocated member variable
-    balanced_target.noalias() = L_aug_T * target;
+    // balanced_target.noalias() = L_aug_T * target;
 
     // Solve system 
-    V_new = solver.solve(balanced_target);
+    V_new = solver.solve(target);
 
     if (solver.info() != Eigen::Success) {
         std::cerr << "Solving failed!" << std::endl;
@@ -155,7 +160,7 @@ void ArapDeformer::computeLocalStep(){
 
             // Compute the covariance matrix for vertex i by summing over its neighbors
             deformed_edge = (V_new.row(i) - V_new.row(neighbor_index)).transpose();
-            covariance += precomputed_neighbors[i][j].weighted_edge * deformed_edge.transpose();
+            covariance += deformed_edge * precomputed_neighbors[i][j].weighted_edge.transpose();
         }
         
         // SVD Decomposition 
