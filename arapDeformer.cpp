@@ -9,10 +9,8 @@ V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
 
 /**
  * Constructs the system matrix for the global step and pre-factors the solver.
- * Initializes the system using the symmetric negative cotangent Laplacian.
  * Adds anchor weights directly to the diagonal of pinned vertices.
- * Pre-computes the Cholesky decomposition of this N x N symmetric positive-definite 
- * matrix for fast back-substitution during the global solve.
+ * Pre-computes the Cholesky decomposition for fast back-substitution during the global solve.
  */
 void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
     Eigen::SparseMatrix<double> L_system = -L_cot; // flip from negative semi definite to positive semi definite

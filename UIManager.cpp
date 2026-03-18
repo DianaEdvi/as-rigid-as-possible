@@ -143,7 +143,7 @@ bool UIManager::handle_mouse_move(int mouse_x, int mouse_y, int modifier) {
     }
 
     if (is_dragging && selected_vertex != -1) {
-        // 1. Use RowVector3d (1x3) so libigl knows this is exactly ONE vertex
+        // Use RowVector3d (1x3) so libigl knows this is exactly ONE vertex
         Eigen::RowVector3d win_coords; 
 
         // Project the 3D position
@@ -152,7 +152,7 @@ bool UIManager::handle_mouse_move(int mouse_x, int mouse_y, int modifier) {
         
         double z = win_coords(2);  
         
-        // 2. Unproject using RowVector3d as well
+        // Unproject using RowVector3d as well
         Eigen::RowVector3d newPos;
         Eigen::RowVector3d mouse_pos(mouse_x, mouseY, z);
         igl::unproject(mouse_pos, viewer.core().view, viewer.core().proj, viewer.core().viewport, newPos);

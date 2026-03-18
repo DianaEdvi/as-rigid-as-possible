@@ -79,3 +79,49 @@ Finally, we populate a NeighbourData object with the relevant information and pu
     precomputed_neighbors[currentVertex].push_back(data);
 
 And thats it! We have calculates all precomputations. Now that we have this, we can move on to the rest of ARAP.
+
+## Populating the Augmented Laplacian
+
+The Augmented Laplacian is the A term in our final equation Ax = b. The original laplacian is non-singular (it is not invertible). So solving for Ax = b with A being the laplacian will fail.
+
+Instead, we need to inject some "real world" into the matrix to tie it to a position in space. By adding a massive scalar value (like 10000) to the diagonal entry of a specific vertex, we are anchoring it to its world position.
+
+Why is this the case? Compare these two equations:
+
+$$-2x_i + 1x_1 + 1x_2 = 0$$
+
+$$(-2 + 1,000,000)x_i + 1x_1 + 1x_2 = 0 + (1,000,000 \cdot \text{target\_X})$$
+
+The solution to the second one will be something around 999,998, meaning that the effect of the neighbouring vertices is insignificant.
+
+In other words, if a vertex has a very large weight, then the weight of the neighbouring edges becomes numerically insignificant. So the result of the linear equation will be approximately the vertex, meaning it will not move when the new positions of each vertex is being calculated.
+
+This also makes the matrix positive-definite, meaning it is invertible!
+
+Alright now lets get into the code!
+
+First, we need to change our cotangent matrix from negative semi-definite to positive semi-definite. All this means is that we want the sum of our weighted edges to equal the diagonal, and we want the diagonal to be positive. LibGL automatically makes the cotangent matrix negative semi-definite, but Cholesky Decomposition, which we will be using, requires a positive semi-definite matrix. So we just flip the signs to match.
+
+    Eigen::SparseMatrix<double> L_system = -L_cot;
+
+Then, as we discussed, for every anchor, we will add that gigantic anchor weight to lock it in place:
+
+    for (int i = 0; i < anchor_indices.size(); ++i) {
+        int idx = anchor_indices[i];
+        L_system.coeffRef(idx, idx) += anchorWeight;
+    }
+
+Next, lets do Cholesky Decomposition ($LDLT$ factorization):
+
+    solver.compute(L_system);
+
+Why we do this: Solving Ax = b is computationally heavy. Fortunately, A remains constant when a vertex is being dragged because it only depends on the mesh topology, the original weights, and which vertices are anchored. It doesn't depend on the new 3D coordinates. So we can depompose it, and then later use back substitution to solve the system very quickly.
+
+All we want to accomplish with this code is create a new system with the new anchors in place.
+
+Finally we do a simple sanity check in case it fails:
+
+    if (solver.info() != Eigen::Success) {
+        std::cerr << "Decomposition failed!" << std::endl;
+        return;
+    }
