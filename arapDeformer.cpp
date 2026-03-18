@@ -15,7 +15,7 @@ V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
  * matrix for fast back-substitution during the global solve.
  */
 void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
-    Eigen::SparseMatrix<double> L_system = -L_cot;
+    Eigen::SparseMatrix<double> L_system = -L_cot; // flip from negative semi definite to positive semi definite
 
     // Add anchor weights directly to the diagonal of the existing vertices
     for (int i = 0; i < anchor_indices.size(); ++i) {
@@ -87,6 +87,7 @@ void ArapDeformer::precomputeStaticData() {
     // Generate base cotangent matrix
     igl::cotmatrix(V, F, L_cot);
     
+    // Calculate differential coordinates
     delta = L_cot * V;
     
     // Create adjacency list for each vertex
@@ -96,18 +97,21 @@ void ArapDeformer::precomputeStaticData() {
     // Traverse efficiently through sparse matrix
     for (int c = 0; c < L_cot.outerSize(); ++c){
         for (Eigen::SparseMatrix<double>::InnerIterator it(L_cot, c); it; ++it){
-            int row = it.row();
-            int col = it.col();
+            // Access data from cotangent matrix
+            int currentVertex = it.row();
+            int neighbouringVertex = it.col();
             double weight = it.value();
 
-            if (row != col) { // Ignore diagonal entries
+            if (currentVertex != neighbouringVertex) { // Ignore diagonal entries
+                // Populate neighbour data 
                 NeighborData data;
-                data.index = col;
+                data.index = neighbouringVertex;
                 data.weight = weight;
-                data.original_edge = (V.row(col) - V.row(row)).transpose();
+                data.original_edge = (V.row(neighbouringVertex) - V.row(currentVertex)).transpose();
                 data.weighted_edge = -data.weight * data.original_edge;
                 data.half_weighted_edge = (data.weight / 2.0) * data.original_edge;
-                precomputed_neighbors[row].push_back(data);
+                // save the neighbour data for this vertex
+                precomputed_neighbors[currentVertex].push_back(data);
             }
         }
     }
