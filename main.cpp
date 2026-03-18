@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     std::vector<Eigen::Vector3d> anchors_positions;
     bool needs_rebuild = false;
     bool needs_solve = false;
-    int arapIterations = 20;
+    int arapIterations = 5;
 
     ArapDeformer deformer(V, F, anchors, anchors_positions);
     deformer.V_new = V;
@@ -112,32 +112,24 @@ int main(int argc, char *argv[])
     };
 
     viewer.callback_key_pressed = [&](igl::opengl::glfw::Viewer& v, unsigned int key, int modifiers) -> bool {
-        // Check if the 'r' or 'R' key was pressed
         if (key == 'r' || key == 'R') {            
-            // 1. Reset the vertices
+            // Reset the vertices and clear anchors and dots 
             deformer.V_new = V;
             viewer.data().set_vertices(deformer.V_new);
-            
-            // 2. Clear out all the anchors so it doesn't snap back!
             anchors.clear();
             anchors_positions.clear();
-            viewer.data().clear_points(); // Erases the red/green dots
+            viewer.data().clear_points(); 
             needs_rebuild = true;
 
             uiManager.rebuild_tree();
             
-            return true; // Tells libigl we handled this key press
+            return true;
         }
         return false;
     };
 
-
-
-    // Set default mesh view settings
     viewer.data().set_mesh(V, F);
     viewer.data().set_face_based(true);
-    
-    // Launch window
     viewer.launch(); 
 }
 

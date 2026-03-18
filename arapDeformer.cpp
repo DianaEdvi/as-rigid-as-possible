@@ -8,47 +8,13 @@ ArapDeformer::ArapDeformer(const Eigen::MatrixXd& v, const Eigen::MatrixXi& f, s
 V(v), F(f), anchor_indices(anchors), anchors_positions(anchors_positions){}
 
 /**
- * Constructs the overdetermined system matrix (A) and pre-factors the solver
- * 1. Computes the Laplace-Beltrami operator (cotangent weights)
- * 2. Computes the original mesh curvature (delta)
- * 3. Appends anchors as extra rows to pin specific vertices
- * 4. Pre-computes the Normal Equations (A^T * A) to ensure symmetry
- * 5. Computes Cholesky decomposition for faster solving
+ * Constructs the system matrix for the global step and pre-factors the solver.
+ * Initializes the system using the symmetric negative cotangent Laplacian.
+ * Adds anchor weights directly to the diagonal of pinned vertices.
+ * Pre-computes the Cholesky decomposition of this N x N symmetric positive-definite 
+ * matrix for fast back-substitution during the global solve.
  */
 void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Eigen::MatrixXi& F, const double& anchorWeight){
-    // Store new data in triplets. More efficient when we rebuild the sparse matrix 
-    // std::vector<Eigen::Triplet<double>> triplets;
-
-    // // Reserve space
-    // triplets.reserve(L_cot.nonZeros() + anchor_indices.size());
-
-    // // Traverse efficiently through sparse matrix
-    // for (int c = 0; c < L_cot.outerSize(); ++c){
-    //     // Copy L_cot into triplets 
-    //     for (Eigen::SparseMatrix<double>::InnerIterator it(L_cot, c); it; ++it){
-    //         triplets.push_back(Eigen::Triplet<double>(it.row(), it.col(), it.value()));
-    //     }
-    // }
-
-    // int currentRow = V.rows(); // begin establishing anchor data after Nth row 
-
-    // // Traverse through all the vertices we want to anchor
-    // for (int i = 0; i < anchor_indices.size(); ++i){
-    //     // Add a new row for each anchor. Provide the location and weight
-    //     triplets.push_back(Eigen::Triplet<double>(currentRow, anchor_indices[i], anchorWeight));
-    //     currentRow++;
-    // }
-
-    // L_aug.resize(V.rows() + anchor_indices.size(), V.rows()); // Num rows, num cols. 
-    // // Num cols represents the number of vertices, not xyz. We are in Laplacian after all
-
-    // L_aug.setFromTriplets(triplets.begin(), triplets.end());
-
-    // L_aug_T = L_aug.transpose();
-
-    // // Normal Equations
-    // Eigen::SparseMatrix<double> prefactorized_L_aug = L_aug_T * L_aug;
-
     Eigen::SparseMatrix<double> L_system = -L_cot;
 
     // Add anchor weights directly to the diagonal of the existing vertices
@@ -100,10 +66,6 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
  * This effectively finds the vertex positions that minimize the shape deformation while preserving anchor positions.
  */
 void ArapDeformer::solveLeastSquares(){
-    // Normal Equations 
-    // Directly evaluate the multiplication into the pre-allocated member variable
-    // balanced_target.noalias() = L_aug_T * target;
-
     // Solve system 
     V_new = solver.solve(target);
 
@@ -142,14 +104,11 @@ void ArapDeformer::precomputeStaticData() {
             }
         }
     }
-
-    
-
 }
 
 // For each vertex, compute the optimal rotation that best aligns the original and deformed edge vectors to preserve local rigidity.
 void ArapDeformer::computeLocalStep(){
-    // MULTITHREADING COOLNESS: Splits the loop across your available CPU threads
+    // MULTITHREADING COOLNESS: Splits the loop across available CPU threads
     igl::parallel_for(V.rows(), [&](int i){
         Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero(); 
         
