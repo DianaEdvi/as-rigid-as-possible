@@ -8,6 +8,7 @@ else()
     add_compile_options(-march=native -O3 -ffast-math)
 endif()
 
+
 list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # Libigl
