@@ -31,8 +31,8 @@ struct ArapDeformer {
         int index;
         double weight;
         Eigen::Vector3d original_edge;
-        Eigen::Vector3d weighted_edge;      // For computeLocalStep
-        Eigen::Vector3d half_weighted_edge; // For populateTargetMatrix
+        Eigen::Vector3d weighted_edge;      
+        Eigen::Vector3d half_weighted_edge; 
     };
     std::vector<std::vector<NeighborData>> precomputed_neighbors;
 };

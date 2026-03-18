@@ -36,29 +36,29 @@ igl_include(imgui)
 file(GLOB SRC_FILES *.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-# Link igl (and the glfw module) to your project
-target_link_libraries(${PROJECT_NAME} PUBLIC 
-igl::glfw
-## Other modules you could link to
-# igl::embree
-igl::imgui
-# igl::opengl
-# igl::stb
-# igl::predicates
-# igl::xml
-# igl_copyleft::cgal
-# igl_copyleft::comiso
-# igl_copyleft::core
-# igl_copyleft::cork
-# igl_copyleft::tetgen
-# igl_restricted::matlab
-# igl_restricted::mosek
-# igl_restricted::triangle
-)
-
-# Force the executable to the top-level build directory
+# Force the executable to output directly to the build folder (CMAKE_BINARY_DIR)
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}"
 )
+
+# Link igl (and the glfw module) to your project
+target_link_libraries(${PROJECT_NAME} PUBLIC 
+  igl::glfw
+  ## Other modules you could link to
+  # igl::embree
+  igl::imgui
+  # igl::opengl
+  # igl::stb
+  # igl::predicates
+  # igl::xml
+  # igl_copyleft::cgal
+  # igl_copyleft::comiso
+  # igl_copyleft::core
+  # igl_copyleft::cork
+  # igl_copyleft::tetgen
+  # igl_restricted::matlab
+  # igl_restricted::mosek
+  # igl_restricted::triangle
+  )
