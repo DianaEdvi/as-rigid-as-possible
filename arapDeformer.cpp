@@ -33,9 +33,10 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
 }
 
 /**
- * Constructs the Right-Hand Side (b) for the least-squares system
- * Top N rows: Original differential coordinates (delta)
- * Bottom C rows: Target 3D positions of anchor vertices
+ * Constructs the Right-Hand Side (b) for the global linear system.
+ * The matrix size is strictly N x 3 (total vertices by xyz).
+ * Accumulates the rotation-based target components from the local step using precomputed half-weighted edges.
+ * Injects the soft-constraint target positions for anchor vertices by adding their weighted 3D positions directly to their respective rows.
  */
 void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
     target.resize(V.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
@@ -54,7 +55,6 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
         target.row(i) = -weighted_delta.transpose();
     });
 
-    // Populate the N + C rows with the anchor vertex positions 
     for (int i = 0; i < anchor_indices.size(); ++i){
         int idx = anchor_indices[i];
         target.row(idx) += target_positions[i].transpose() * anchorWeight; // Apply anchor weight to the target position
@@ -62,8 +62,10 @@ void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& targ
 }
 
 /**
- * Computes the optimal vertex positions by solving the linear system by using the pre-factored Cholesky decomposition.
- * This effectively finds the vertex positions that minimize the shape deformation while preserving anchor positions.
+ * Executes the Global Step of the ARAP algorithm.
+ * Computes the optimal vertex positions by solving the pre-factored linear system.
+ * This finds the coordinates that best match the optimal local rotations while 
+ * being pulled towards the user-defined anchor positions.
  */
 void ArapDeformer::solveLeastSquares(){
     // Solve system 
@@ -73,9 +75,14 @@ void ArapDeformer::solveLeastSquares(){
         std::cerr << "Solving failed!" << std::endl;
         return;
     }
-
 }
 
+/**
+ * Pre-computes static geometry data to optimize the iterative local-global solver.
+ * Generates the base cotangent Laplacian matrix.
+ * Computes the original differential coordinates (delta).
+ * Builds an optimized adjacency list storing original edge vectors and their pre-multiplied cotangent weights to avoid redundant calculations per frame.
+ */
 void ArapDeformer::precomputeStaticData() {
     // Generate base cotangent matrix
     igl::cotmatrix(V, F, L_cot);
@@ -106,8 +113,12 @@ void ArapDeformer::precomputeStaticData() {
     }
 }
 
-// For each vertex, compute the optimal rotation that best aligns the original and deformed edge vectors to preserve local rigidity.
-void ArapDeformer::computeLocalStep(){
+/**
+ * Executes the Local Step of the ARAP algorithm.
+ * For each vertex, finds the optimal 3D rotation matrix that best aligns its 
+ * 1-ring neighborhood from the original rest shape to the current deformed shape.
+ * Solved by constructing a covariance matrix and extracting the rotation via SVD.
+ */void ArapDeformer::computeLocalStep(){
     // MULTITHREADING COOLNESS: Splits the loop across available CPU threads
     igl::parallel_for(V.rows(), [&](int i){
         Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero(); 
