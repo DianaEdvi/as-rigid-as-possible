@@ -123,6 +123,8 @@ int main(int argc, char *argv[])
             anchors_positions.clear();
             viewer.data().clear_points(); // Erases the red/green dots
             needs_rebuild = true;
+
+            uiManager.rebuild_tree();
             
             return true; // Tells libigl we handled this key press
         }
