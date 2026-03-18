@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(example)
+project(arap)
 
 # Enable modern CPU optimizations (AVX2, FMA, etc.)
 if(MSVC)
@@ -34,6 +34,13 @@ igl_include(imgui)
 # Add your project files
 file(GLOB SRC_FILES *.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILES})
+
+# Force the executable to output directly to the build folder (CMAKE_BINARY_DIR)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}"
+)
 
 # Link igl (and the glfw module) to your project
 target_link_libraries(${PROJECT_NAME} PUBLIC 
