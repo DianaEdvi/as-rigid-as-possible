@@ -125,3 +125,76 @@ Finally we do a simple sanity check in case it fails:
         std::cerr << "Decomposition failed!" << std::endl;
         return;
     }
+
+## Computing Local Step
+
+The Local step looks at the difference in rotation between each vertex's neighbouring edges of the currently deformed mesh and the original one. It then calculates a 3x3 rotation matrix for every vertex based on its neighbouring vectors and stores it in a vector of matrices.
+
+We use multithreading because the vertices don't relate to one another in the loop, so we can run the calculations concurrently:
+
+    igl::parallel_for(V.rows(), [&](int i)
+
+We will need a cross-covariance matrix. This will store the data for how a neighbourhood has been rotated and changed shape.
+    Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
+
+Here, we loop through every neighbourhood and take the deformed edges from latest changed model. We get the new shape by multiplying the deformed edge by the weighted edge. This comes directly fron the ARAP formula.
+
+    for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
+            int neighbor_index = precomputed_neighbors[i][j].index;
+            Eigen::Vector3d deformed_edge;
+
+            // Compute the covariance matrix for vertex i by summing over its neighbors
+            deformed_edge = (V_new.row(i) - V_new.row(neighbor_index)).transpose();
+            covariance += deformed_edge * precomputed_neighbors[i][j].weighted_edge.transpose();
+        }
+Finally, we do SVD decomposition. Polar SVD factors the covariance matrix into two parts: $S_i = R_i T_i$.
+
+$R_i$ (rotation) is a pure orthogonal rotation matrix (determinant of exactly $1$). $T_i$ (T) is a symmetric positive semi-definite scaling matrix (the stretching).We discard $T_i$ entirely and store $R_i$ in the rotations array.
+
+    Eigen::Matrix3d rotation, T;
+    igl::polar_svd(covariance, rotation, T);
+    rotations[i] = rotation;
+
+## Populate Target Matrix
+
+This function handles populating the b variable in the equation Ax = b.
+
+Lets just allocate some memory first.
+
+    target.resize(V.rows(), 3);
+
+We can use multithreading again.
+
+igl::parallel_for(delta.rows(), [&](int i)
+    Eigen::Vector3d weighted_delta = Eigen::Vector3d::Zero();
+
+Here we sum up the target and neighbour rotation matrice, multiply it by the edge weight and divide by 2 to get the average. This comes straight from the ARAP formula.
+
+for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
+    int neighbor_index = precomputed_neighbors[i][j].index;
+    Eigen::Matrix3d rotation_target = rotations[i];
+    Eigen::Matrix3d rotation_neighbor = rotations[neighbor_index];
+    weighted_delta += (rotation_target + rotation_neighbor) * precomputed_neighbors[i][j].half_weighted_edge;
+}
+
+Here we store the data. We multiple by a negative because earlier we flipped the sign for L_cot, and we need to balance the equation.
+    target.row(i) = -weighted_delta.transpose();
+
+Finally, we just add the weight to the right hand side of the equation.
+for (int i = 0; i < anchor_indices.size(); ++i){
+    int idx = anchor_indices[i];
+    target.row(idx) += target_positions[i].transpose() * anchorWeight; // Apply anchor weight to the target position
+}
+
+## Global step (solve least squares)
+
+Finally, we just need to solve the system of equation using least squares.
+
+    V_new = solver.solve(target);
+
+And do a sanity check
+
+    if (solver.info() != Eigen::Success) {
+        std::cerr << "Solving failed!" << std::endl;
+        return;
+    }

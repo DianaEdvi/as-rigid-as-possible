@@ -37,7 +37,7 @@ void ArapDeformer::populateAugmentedLaplacian(const Eigen::MatrixXd& V, const Ei
  * Injects the soft-constraint target positions for anchor vertices by adding their weighted 3D positions directly to their respective rows.
  */
 void ArapDeformer::populateTargetMatrix(const std::vector<Eigen::Vector3d>& target_positions, double anchorWeight){
-    target.resize(V.rows(), 3); // Num rows = total vertices + anchors, cols = xyz
+    target.resize(V.rows(), 3); // Num rows = total vertices, cols = xyz
 
     // Populate the first N rows with the original curvature (delta)
     //original edge vectors, rotated by the matrices in rotations, and weighted by the cotangent weights.
@@ -128,7 +128,7 @@ void ArapDeformer::precomputeStaticData() {
         // Loop through all neighbouring vertices
         for (int j = 0; j < precomputed_neighbors[i].size(); ++j){
             int neighbor_index = precomputed_neighbors[i][j].index;
-            Eigen::Vector3d original_edge, deformed_edge;
+            Eigen::Vector3d deformed_edge;
 
             // Compute the covariance matrix for vertex i by summing over its neighbors
             deformed_edge = (V_new.row(i) - V_new.row(neighbor_index)).transpose();
